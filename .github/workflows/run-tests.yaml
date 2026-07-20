@@ -1,0 +1,51 @@
+name: Run Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # The point of this package is to catch library changes that only break consumers, and
+  # it depends on a branch rather than a tag. A nightly run surfaces that breakage without
+  # waiting for someone to push here.
+  schedule:
+    - cron: '0 6 * * *'
+
+concurrency:
+  group: run-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  consumer-tests:
+    name: Consumer Tests (${{ matrix.xcode }} / ${{ matrix.platform.name }})
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode: ['26.4', '26.5']
+        # Each platform compiles the other's sources out, so neither substitutes for the
+        # other: macOS never sees the UIKit overloads, iOS never sees the AppKit ones.
+        platform:
+          - name: macOS
+            destination: 'platform=macOS'
+          - name: iOS
+            destination: 'platform=iOS Simulator,name=iPhone 17'
+
+    steps:
+      - name: Select Xcode version (${{ matrix.xcode }})
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ matrix.xcode }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve against the library
+        run: swift package resolve
+
+      - name: Run consumer tests (${{ matrix.platform.name }})
+        run: |
+          xcodebuild test \
+            -scheme swift-snapshot-testing-macros-sample \
+            -destination '${{ matrix.platform.destination }}'

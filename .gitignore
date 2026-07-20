@@ -1,0 +1,12 @@
+.DS_Store
+.build/
+.swiftpm/
+Package.resolved
+
+# Session state, never published.
+.claude/
+.cowork-receipts/
+docs/
+
+# References are recorded fresh on every run by design — see README.
+__Snapshots__/
