@@ -44,8 +44,14 @@ jobs:
       - name: Resolve against the library
         run: swift package resolve
 
+      # SwiftPM names the implicit scheme after the package with a `-Package` suffix.
+      # The dependency's own schemes are visible here too; this one builds only ours.
+      # `-skipMacroValidation` is required, not incidental: xcodebuild refuses to run a
+      # macro it has not been told to trust, and there is no one to click Trust & Enable
+      # on a runner. Adopters building through xcodebuild hit exactly this.
       - name: Run consumer tests (${{ matrix.platform.name }})
         run: |
           xcodebuild test \
-            -scheme swift-snapshot-testing-macros-sample \
-            -destination '${{ matrix.platform.destination }}'
+            -scheme swift-snapshot-testing-macros-sample-Package \
+            -destination '${{ matrix.platform.destination }}' \
+            -skipMacroValidation
