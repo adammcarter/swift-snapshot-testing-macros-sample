@@ -55,3 +55,44 @@ jobs:
             -scheme swift-snapshot-testing-macros-sample-Package \
             -destination '${{ matrix.platform.destination }}' \
             -skipMacroValidation
+
+  migration-proof:
+    name: Migration Proof (${{ matrix.xcode }} / ${{ matrix.platform.name }})
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode: ['26.4', '26.5']
+        platform:
+          - name: macOS
+            destination: 'platform=macOS'
+          - name: iOS
+            destination: 'platform=iOS Simulator,name=iPhone 17'
+
+    steps:
+      - name: Select Xcode version (${{ matrix.xcode }})
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ matrix.xcode }}
+
+      - name: Checkout sample
+        uses: actions/checkout@v4
+        with:
+          path: sample
+
+      # The migrator is a separate tool. Check it out so its real CLI does the migration —
+      # nothing about the transform is faked or pre-baked here.
+      - name: Checkout migrator
+        uses: actions/checkout@v4
+        with:
+          repository: adammcarter/swift-snapshot-testing-macros-migrator
+          path: swift-snapshot-testing-macros-migrator
+
+      # Runs the real migrator over the legacy fixture, then builds the result. A clean build is
+      # the proof: the deprecated macros do not compile on Xcode 26.4+, so an old-macro suite that
+      # compiles after migration is the migration path working end to end.
+      - name: Migrate a legacy suite and build it (${{ matrix.platform.name }})
+        run: |
+          sample/MigrationProof/migrate-and-build.sh \
+            "$GITHUB_WORKSPACE/swift-snapshot-testing-macros-migrator" \
+            '${{ matrix.platform.destination }}'

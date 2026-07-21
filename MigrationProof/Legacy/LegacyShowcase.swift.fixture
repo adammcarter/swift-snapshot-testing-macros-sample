@@ -1,0 +1,65 @@
+import SnapshotTestingMacros
+import SwiftUI
+import Testing
+
+// A representative legacy suite on the widest released old-macro surface (2.x / 3.0.0):
+// suite- and test-level traits, the decoration traits, both parameterisation forms, native
+// Swift Testing traits, and a nested subsuite. Cross-platform SwiftUI so the migrated result
+// builds on macOS and iOS alike.
+//
+// Kept as a `.fixture` because it cannot compile: the deprecated `@SnapshotSuite` /
+// `@SnapshotTest` macros expand to non-static `@used` / `@section` properties that Xcode 26.4+
+// rejects — which is the whole reason the migrator exists. `migrate-and-build.sh` runs the real
+// migrator over a copy of this file and compiles what comes out.
+
+@SnapshotSuite(.theme(.all), .sizes(.minimum))
+struct ProfileShowcase {
+  @SnapshotTest
+  func basic() -> some View {
+    Text("basic")
+  }
+
+  @SnapshotTest("Named card")
+  func named() -> some View {
+    Text("named")
+  }
+
+  @SnapshotTest(.padding(8), .backgroundColor(.red))
+  func decorated() -> some View {
+    Text("decorated")
+  }
+
+  @SnapshotTest(configurationValues: [1, 2, 3])
+  func byValue(value: Int) -> some View {
+    Text("value \(value)")
+  }
+
+  @SnapshotTest(configurations: [.init(name: "a", value: 1), .init(name: "b", value: 2)])
+  func byConfiguration(configuration: Int) -> some View {
+    Text("config \(configuration)")
+  }
+}
+
+// `.tags` demonstrates a native Swift Testing trait surviving migration verbatim. `.timeLimit`
+// would too, but it is `@available(iOS 16+)` while this package targets the library's iOS 15
+// floor — so its migration parity is covered by the migrator's own unit test instead, keeping
+// this cross-platform compile proof at the lowest supported platform.
+@SnapshotSuite("Tagged Showcase", .theme(.light), .tags(.snapshots))
+struct TaggedShowcase {
+  @SnapshotTest
+  func tagged() -> some View {
+    Text("tagged")
+  }
+
+  @SnapshotSuite(.theme(.dark))
+  struct Nested {
+    @SnapshotTest
+    func nested() -> some View {
+      Text("nested")
+    }
+  }
+}
+
+extension Tag {
+  @Tag static var snapshots: Self
+}
